@@ -1265,10 +1265,10 @@ class GestioneComponentiTab:
         ttk.Label(frame_dettagli, text="(es: SU, CAM, RES - lascia vuoto se non necessario)", font=("Arial", 8), foreground="gray").grid(row=5, column=1, sticky="w", padx=10)
 
         # Campo Inizio Indicizzazione
-        #ttk.Label(frame_dettagli, text="Inizio Indicizzazione Prefisso (opzionale):", font=("Arial", 10)).grid(row=6, column=0, sticky="w", pady=10)
-        #self.entry_inizio_indic = ttk.Entry(frame_dettagli, width=40, font=("Arial", 10))
-        #self.entry_inizio_indic.grid(row=6, column=1, pady=10, padx=10, sticky="ew")
-        #ttk.Label(frame_dettagli, text="(numero da cui iniziare, es: 7 genera SU7, SU8, SU9...)", font=("Arial", 8), foreground="gray").grid(row=7, column=1, sticky="w", padx=10)
+        ttk.Label(frame_dettagli, text="Inizio Indicizzazione Prefisso (opzionale):", font=("Arial", 10)).grid(row=6, column=0, sticky="w", pady=10)
+        self.entry_inizio_indic = ttk.Entry(frame_dettagli, width=40, font=("Arial", 10))
+        self.entry_inizio_indic.grid(row=6, column=1, pady=10, padx=10, sticky="ew")
+        ttk.Label(frame_dettagli, text="(numero da cui iniziare, es: 7 genera SU7, SU8, SU9...)", font=("Arial", 8), foreground="gray").grid(row=7, column=1, sticky="w", padx=10)
 
         # Checkbox Indicizzazione
         self.var_indicizzazione = tk.BooleanVar(value=True)
@@ -1369,10 +1369,10 @@ class GestioneComponentiTab:
         if prefisso:
             self.entry_prefisso.insert(0, prefisso)
 
-        #self.entry_inizio_indic.delete(0, tk.END)
-        #inizio_indic = comp.get('inizio_indicizzazione_prefisso')
-        #if inizio_indic is not None:
-        #self.entry_inizio_indic.insert(0, str(inizio_indic))
+        self.entry_inizio_indic.delete(0, tk.END)
+        inizio_indic = comp.get('inizio_indicizzazione_prefisso')
+        if inizio_indic is not None:
+            self.entry_inizio_indic.insert(0, str(inizio_indic))
 
         indicizzazione = comp.get('indicizzazione', True)
         self.var_indicizzazione.set(indicizzazione)
@@ -1391,7 +1391,7 @@ class GestioneComponentiTab:
         self.entry_code_12nc.delete(0, tk.END)
         self.entry_sn_iniziale.delete(0, tk.END)
         self.entry_prefisso.delete(0, tk.END)
-        #self.entry_inizio_indic.delete(0, tk.END)
+        self.entry_inizio_indic.delete(0, tk.END)
         self.var_indicizzazione.set(True)
 
         # Abilita i pulsanti
