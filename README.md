@@ -8,15 +8,11 @@ Label Master 3000 è un'applicazione desktop per la gestione e stampa di etichet
 - Dipendenze elencate in `requirements.txt`
 
 **Installazione & avvio (Windows, cmd.exe)**
-1. Apri il terminale nella cartella del progetto:
-```cmd
-cd "C:\Users\d.zanzonelli\Desktop\SOFTWARE VOULT\Label Master 3000"
-```
-2. Installa le dipendenze:
+1. Installa le dipendenze:
 ```cmd
 python -m pip install -r requirements.txt
 ```
-3. Avvia l'app:
+2. Avvia l'app:
 ```cmd
 python main.py
 ```
