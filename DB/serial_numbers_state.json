@@ -1,0 +1,102 @@
+{
+  "test1": {
+    "ultimo_sn": 125,
+    "data_ultimo_utilizzo": "2025-12-10T14:10:43.134030",
+    "code_12nc": "asdasdasd"
+  },
+  "ELECTRICAL PANEL V4": {
+    "ultimo_sn": 27,
+    "data_ultimo_utilizzo": "2025-12-10T14:10:43.134532",
+    "code_12nc": "3000 500 00801"
+  },
+  "TSW101 AUTOMOTIVE POE+ SWITCH": {
+    "ultimo_sn": 171,
+    "data_ultimo_utilizzo": "2025-12-10T15:43:47.815671",
+    "code_12nc": "1000 100 52700"
+  },
+  "reServer Industrial J3011": {
+    "ultimo_sn": 40,
+    "data_ultimo_utilizzo": "2025-12-11T11:45:31.697456",
+    "code_12nc": null
+  },
+  "nvidia jetson tx2 nx module": {
+    "ultimo_sn": 521,
+    "data_ultimo_utilizzo": "2025-12-10T14:13:25.515757",
+    "code_12nc": null
+  },
+  "1080P IP CAMERA, SIDE VIEW, [ 2.3mm, 150°] POE": {
+    "ultimo_sn": 346,
+    "data_ultimo_utilizzo": "2025-12-10T14:13:25.512826",
+    "code_12nc": null
+  },
+  "TELTONIKA ROUTER 4G RUT 956 CON SERIALE,IO,GPS": {
+    "ultimo_sn": 151,
+    "data_ultimo_utilizzo": "2025-12-10T15:43:47.816207",
+    "code_12nc": "1000 300 33300"
+  },
+  "SCHEDA - reComputer J202 - carrier Board for Jetson Nano/Xavier NX/TX2 NX, with 4xUSB, M.2 Key M,E same size of NVIDIA® Jetson Xavier™ NX Dev Kit carrier board": {
+    "ultimo_sn": 411,
+    "data_ultimo_utilizzo": "2025-12-10T15:43:47.817308",
+    "code_12nc": "1000 300 02200"
+  },
+  "dsadsa": {
+    "ultimo_sn": 60,
+    "data_ultimo_utilizzo": "2025-12-11T11:45:31.696602",
+    "code_12nc": null
+  },
+  "Componente 1": {
+    "ultimo_sn": 38,
+    "data_ultimo_utilizzo": "2025-12-12T15:43:16.752855",
+    "code_12nc": "1"
+  },
+  "Componente 2": {
+    "ultimo_sn": 22,
+    "data_ultimo_utilizzo": "2025-12-12T10:18:25.197071",
+    "code_12nc": null
+  },
+  "asdasdd": {
+    "ultimo_sn": 25,
+    "data_ultimo_utilizzo": "2025-12-12T10:11:33.783703",
+    "code_12nc": null
+  },
+  "Componente 3": {
+    "ultimo_sn": 42,
+    "data_ultimo_utilizzo": "2025-12-12T15:43:16.754923",
+    "code_12nc": "3"
+  },
+  "asd": {
+    "ultimo_sn": 2,
+    "data_ultimo_utilizzo": "2025-12-15T10:10:57.278266",
+    "code_12nc": "asd"
+  },
+  "Componente 5": {
+    "ultimo_sn": 40,
+    "data_ultimo_utilizzo": "2025-12-12T15:43:16.754118",
+    "code_12nc": "2"
+  },
+  "a": {
+    "ultimo_sn": 2,
+    "data_ultimo_utilizzo": "2025-12-15T10:10:57.279586",
+    "code_12nc": "2"
+  },
+  "a2": {
+    "ultimo_sn": 6,
+    "data_ultimo_utilizzo": "2025-12-15T10:10:57.282064",
+    "code_12nc": null
+  },
+  "Comp 1": {
+    "ultimo_sn": 2,
+    "data_ultimo_utilizzo": "2025-12-15T10:14:57.085621",
+    "code_12nc": "1000"
+  },
+  "Comp 2": {
+    "ultimo_sn": 5,
+    "data_ultimo_utilizzo": "2025-12-15T10:14:57.088379",
+    "code_12nc": null
+  },
+  "Comp 3": {
+    "ultimo_sn": 3,
+    "data_ultimo_utilizzo": "2025-12-15T10:14:57.089789",
+    "code_12nc": null
+  }
+}
