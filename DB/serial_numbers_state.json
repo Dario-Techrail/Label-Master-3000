@@ -85,18 +85,18 @@
     "code_12nc": null
   },
   "Comp 1": {
-    "ultimo_sn": 2,
-    "data_ultimo_utilizzo": "2025-12-15T10:14:57.085621",
-    "code_12nc": "1000"
+    "ultimo_sn": 50,
+    "data_ultimo_utilizzo": "2025-12-16T10:01:18.015372",
+    "code_12nc": null
   },
   "Comp 2": {
-    "ultimo_sn": 5,
-    "data_ultimo_utilizzo": "2025-12-15T10:14:57.088379",
+    "ultimo_sn": 149,
+    "data_ultimo_utilizzo": "2025-12-16T10:01:18.019124",
     "code_12nc": null
   },
   "Comp 3": {
-    "ultimo_sn": 3,
-    "data_ultimo_utilizzo": "2025-12-15T10:14:57.089789",
+    "ultimo_sn": 1009,
+    "data_ultimo_utilizzo": "2025-12-16T10:01:18.019851",
     "code_12nc": null
   }
 }

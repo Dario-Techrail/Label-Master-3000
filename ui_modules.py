@@ -215,6 +215,7 @@ class InterfacciaGeneratoreExcel:
         self.etichettebox_tab = None
         self.etichettepdf_tab = EtichettePDFTab(self.notebook, self)
         self.etichetteword_tab = EtichetteWordTab(self.notebook, self)
+        self.merge_doc_tab = MergeDocTab(self.notebook, self)
 
         self._configura_stile()
 
@@ -3657,3 +3658,481 @@ class EtichetteWordTab:
             self.progress.stop()
             self.status_label.config(text="Errore durante la generazione", foreground="red")
             messagebox.showerror("Errore", f"Si è verificato un errore:\n\n{str(e)}")
+
+
+# ============================================================================
+# MERGE DOC TAB
+# ============================================================================
+
+class MergeDocTab:
+    """Gestisce la scheda Merge Doc per unire e aggregare file Excel"""
+
+    def __init__(self, parent_notebook, app_context):
+        self.notebook = parent_notebook
+        self.app_context = app_context
+        self.input_files = []  # Lista dei file Excel di input
+        self.output_file = None
+
+        self.frame = ttk.Frame(parent_notebook)
+        parent_notebook.add(self.frame, text="Merge Doc.")
+
+        self.create_widgets()
+
+    def create_widgets(self):
+        """Crea il contenuto della scheda Merge Doc"""
+        container = ttk.Frame(self.frame)
+        container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Configura il grid per permettere l'espansione verticale
+        container.grid_rowconfigure(0, weight=1)
+        container.grid_columnconfigure(0, weight=1)
+
+        canvas = tk.Canvas(container, highlightthickness=0, bg="white")
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        main_frame = ttk.Frame(canvas, padding=20)
+
+        def update_scrollregion(event=None):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            if canvas.yview()[0] < 0:
+                canvas.yview_moveto(0)
+
+        main_frame.bind("<Configure>", update_scrollregion)
+
+        canvas_window = canvas.create_window((0, 0), window=main_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        def on_canvas_configure(event):
+            canvas_width = event.width
+            canvas.itemconfig(canvas_window, width=canvas_width)
+            update_scrollregion()
+
+        canvas.bind("<Configure>", on_canvas_configure)
+
+        # Aggiungi supporto rotella del mouse
+        bind_mousewheel_to_canvas(canvas)
+
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
+
+        main_frame.grid_columnconfigure(0, weight=1)
+
+        # Titolo e descrizione
+        ttk.Label(
+            main_frame,
+            text="Merge Documenti Excel",
+            font=('Arial', 16, 'bold')
+        ).grid(row=0, column=0, pady=(0, 10), sticky="w")
+
+        ttk.Label(
+            main_frame,
+            text="Unisce multipli file Excel in un unico documento, eliminando duplicati e gestendo conflitti.",
+            font=('Arial', 10),
+            foreground="gray"
+        ).grid(row=1, column=0, pady=(0, 20), sticky="w")
+
+        # Sezione File di Input
+        input_section = ttk.LabelFrame(main_frame, text="File di Input", padding=15)
+        input_section.grid(row=2, column=0, sticky="nsew", pady=10)
+        input_section.columnconfigure(0, weight=1)
+
+        ttk.Label(
+            input_section,
+            text="Seleziona i file Excel da unire:",
+            font=('Arial', 10)
+        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 5))
+
+        # Lista dei file selezionati con scrollbar
+        list_frame = ttk.Frame(input_section)
+        list_frame.grid(row=1, column=0, sticky="nsew", pady=5)
+        list_frame.grid_columnconfigure(0, weight=1)
+        list_frame.grid_rowconfigure(0, weight=1)
+        input_section.grid_rowconfigure(1, weight=1)
+
+        list_scrollbar = ttk.Scrollbar(list_frame, orient="vertical")
+        self.files_listbox = tk.Listbox(
+            list_frame,
+            height=6,
+            yscrollcommand=list_scrollbar.set,
+            font=('Arial', 9)
+        )
+        list_scrollbar.config(command=self.files_listbox.yview)
+        self.files_listbox.grid(row=0, column=0, sticky="nsew")
+        list_scrollbar.grid(row=0, column=1, sticky="ns")
+
+        # Pulsanti per gestire i file
+        buttons_frame = ttk.Frame(input_section)
+        buttons_frame.grid(row=1, column=1, padx=(10, 0), sticky="n")
+
+        ttk.Button(
+            buttons_frame,
+            text="Aggiungi File",
+            command=self.add_input_files
+        ).pack(pady=2, fill=tk.X)
+
+        ttk.Button(
+            buttons_frame,
+            text="Rimuovi Selezionato",
+            command=self.remove_selected_file
+        ).pack(pady=2, fill=tk.X)
+
+        ttk.Button(
+            buttons_frame,
+            text="Rimuovi Tutti",
+            command=self.clear_all_files
+        ).pack(pady=2, fill=tk.X)
+
+        # Sezione Colonne di Aggregazione
+        agg_section = ttk.LabelFrame(main_frame, text="Colonne di Aggregazione", padding=15)
+        agg_section.grid(row=3, column=0, sticky="nsew", pady=10)
+        agg_section.columnconfigure(0, weight=1)
+
+        ttk.Label(
+            agg_section,
+            text="Seleziona le colonne da usare come chiave per identificare duplicati:",
+            font=('Arial', 10)
+        ).grid(row=0, column=0, sticky="w", pady=(0, 5))
+
+        ttk.Label(
+            agg_section,
+            text="(Le colonne disponibili appariranno dopo aver selezionato i file di input)",
+            font=('Arial', 9),
+            foreground="gray"
+        ).grid(row=1, column=0, sticky="w", pady=(0, 10))
+
+        # Container per le checkbox delle colonne con scrollbar
+        columns_container = ttk.Frame(agg_section)
+        columns_container.grid(row=2, column=0, sticky="nsew", pady=5)
+        columns_container.grid_columnconfigure(0, weight=1)
+        columns_container.grid_rowconfigure(0, weight=1)
+        agg_section.grid_rowconfigure(2, weight=1)
+
+        columns_canvas = tk.Canvas(columns_container, height=150, highlightthickness=0)
+        columns_scrollbar = ttk.Scrollbar(columns_container, orient="vertical", command=columns_canvas.yview)
+        self.columns_checkbox_frame = ttk.Frame(columns_canvas)
+
+        self.columns_checkbox_frame.bind(
+            "<Configure>",
+            lambda _: columns_canvas.configure(scrollregion=columns_canvas.bbox("all"))
+        )
+
+        columns_canvas_window = columns_canvas.create_window((0, 0), window=self.columns_checkbox_frame, anchor="nw")
+        columns_canvas.configure(yscrollcommand=columns_scrollbar.set)
+
+        def on_columns_canvas_configure(event):
+            columns_canvas.itemconfig(columns_canvas_window, width=event.width)
+
+        columns_canvas.bind("<Configure>", on_columns_canvas_configure)
+
+        # Aggiungi supporto rotella del mouse
+        bind_mousewheel_to_canvas(columns_canvas)
+
+        columns_canvas.pack(side="left", fill="both", expand=True)
+        columns_scrollbar.pack(side="right", fill="y")
+
+        # Dizionario per tenere traccia delle checkbox delle colonne
+        self.column_checkboxes = {}
+
+        # Frame per i pulsanti di selezione
+        buttons_frame = ttk.Frame(agg_section)
+        buttons_frame.grid(row=3, column=0, pady=10)
+
+        ttk.Button(
+            buttons_frame,
+            text="Seleziona Tutto",
+            command=self.select_all_columns
+        ).pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(
+            buttons_frame,
+            text="Deseleziona Tutto",
+            command=self.deselect_all_columns
+        ).pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(
+            buttons_frame,
+            text="Ricarica Colonne",
+            command=self.load_columns_from_files
+        ).pack(side=tk.LEFT, padx=5)
+
+        # Sezione File di Output
+        output_section = ttk.LabelFrame(main_frame, text="File di Output", padding=15)
+        output_section.grid(row=4, column=0, sticky="nsew", pady=10)
+        output_section.columnconfigure(0, weight=1)
+
+        ttk.Label(
+            output_section,
+            text="Seleziona dove salvare il file unito:",
+            font=('Arial', 10)
+        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 5))
+
+        self.output_label = ttk.Label(
+            output_section,
+            text="Nessun file selezionato",
+            foreground="gray",
+            font=('Arial', 10)
+        )
+        self.output_label.grid(row=1, column=0, sticky="ew", padx=5)
+
+        ttk.Button(
+            output_section,
+            text="Scegli File Output",
+            command=self.select_output_file
+        ).grid(row=1, column=1, padx=10)
+
+        # Sezione Azioni
+        action_section = ttk.Frame(main_frame)
+        action_section.grid(row=5, column=0, pady=20)
+
+        self.merge_button = ttk.Button(
+            action_section,
+            text="Esegui Merge",
+            command=self.execute_merge,
+            style="Accent.TButton"
+        )
+        self.merge_button.pack()
+
+        # Status e Progress
+        status_frame = ttk.Frame(main_frame)
+        status_frame.grid(row=6, column=0, pady=10, sticky="ew")
+        status_frame.grid_columnconfigure(0, weight=1)
+
+        self.progress = ttk.Progressbar(
+            status_frame,
+            mode='indeterminate',
+            length=400
+        )
+        self.progress.grid(row=0, column=0, pady=5, sticky="ew")
+
+        self.status_label = ttk.Label(
+            status_frame,
+            text="Pronto",
+            font=('Arial', 10)
+        )
+        self.status_label.grid(row=1, column=0, pady=5)
+
+    def add_input_files(self):
+        """Aggiunge file Excel di input alla lista"""
+        files = filedialog.askopenfilenames(
+            title="Seleziona File Excel",
+            filetypes=[
+                ("File Excel", "*.xlsx *.xls"),
+                ("Tutti i file", "*.*")
+            ]
+        )
+
+        if files:
+            for file in files:
+                if file not in self.input_files:
+                    self.input_files.append(file)
+                    self.files_listbox.insert(tk.END, Path(file).name)
+
+            self.status_label.config(
+                text=f"{len(self.input_files)} file selezionati",
+                foreground="blue"
+            )
+
+            # Carica automaticamente le colonne dai file
+            self.load_columns_from_files()
+
+    def remove_selected_file(self):
+        """Rimuove il file selezionato dalla lista"""
+        selection = self.files_listbox.curselection()
+        if selection:
+            index = selection[0]
+            self.files_listbox.delete(index)
+            self.input_files.pop(index)
+
+            self.status_label.config(
+                text=f"{len(self.input_files)} file selezionati",
+                foreground="blue"
+            )
+
+    def clear_all_files(self):
+        """Rimuove tutti i file dalla lista"""
+        self.files_listbox.delete(0, tk.END)
+        self.input_files.clear()
+        self.status_label.config(text="Nessun file selezionato", foreground="gray")
+
+        # Pulisci anche le colonne
+        self.clear_column_checkboxes()
+
+    def select_output_file(self):
+        """Seleziona il file di output"""
+        file = filedialog.asksaveasfilename(
+            title="Salva File Merge",
+            defaultextension=".xlsx",
+            filetypes=[
+                ("File Excel", "*.xlsx"),
+                ("Tutti i file", "*.*")
+            ]
+        )
+
+        if file:
+            self.output_file = file
+            self.output_label.config(text=Path(file).name, foreground="black")
+
+    def load_columns_from_files(self):
+        """Carica le colonne disponibili dai file Excel selezionati"""
+        if not self.input_files:
+            self.clear_column_checkboxes()
+            return
+
+        try:
+            # Importa le funzioni per caricare i file
+            from script import load_excel_files, remove_duplicate_columns
+
+            # Carica i file per estrarre le colonne
+            self.status_label.config(text="Caricamento colonne...", foreground="blue")
+            self.root.update()
+
+            combined_df = load_excel_files(self.input_files)
+
+            # Rimuovi colonne duplicate (case-insensitive)
+            combined_df = remove_duplicate_columns(combined_df)
+
+            columns = combined_df.columns.tolist()
+
+            # Pulisci le checkbox esistenti
+            self.clear_column_checkboxes()
+
+            # Crea le nuove checkbox per ogni colonna
+            for i, col in enumerate(columns):
+                var = tk.BooleanVar()
+                cb = ttk.Checkbutton(
+                    self.columns_checkbox_frame,
+                    text=col,
+                    variable=var
+                )
+                cb.grid(row=i, column=0, sticky="w", padx=5, pady=2)
+                self.column_checkboxes[col] = var
+
+            self.status_label.config(
+                text=f"{len(columns)} colonne disponibili",
+                foreground="blue"
+            )
+
+        except Exception as e:
+            self.status_label.config(text="Errore nel caricamento colonne", foreground="red")
+            messagebox.showerror("Errore", f"Impossibile caricare le colonne:\n\n{str(e)}")
+
+    def clear_column_checkboxes(self):
+        """Rimuove tutte le checkbox delle colonne"""
+        for widget in self.columns_checkbox_frame.winfo_children():
+            widget.destroy()
+        self.column_checkboxes.clear()
+
+    def select_all_columns(self):
+        """Seleziona tutte le colonne disponibili"""
+        for var in self.column_checkboxes.values():
+            var.set(True)
+
+    def deselect_all_columns(self):
+        """Deseleziona tutte le colonne"""
+        for var in self.column_checkboxes.values():
+            var.set(False)
+
+    def get_selected_columns(self):
+        """Restituisce la lista delle colonne selezionate"""
+        selected = []
+        for col, var in self.column_checkboxes.items():
+            if var.get():
+                selected.append(col)
+        return selected
+
+    def execute_merge(self):
+        """Esegue il merge dei file Excel"""
+        # Validazione
+        if len(self.input_files) < 1:
+            messagebox.showwarning("Attenzione", "Seleziona almeno un file Excel di input!")
+            return
+
+        if not self.output_file:
+            messagebox.showwarning("Attenzione", "Seleziona un file di output!")
+            return
+
+        # Ottieni le colonne selezionate dalle checkbox
+        aggregation_columns = self.get_selected_columns()
+        if not aggregation_columns:
+            messagebox.showwarning("Attenzione", "Seleziona almeno una colonna di aggregazione!")
+            return
+
+        try:
+            self.progress.start(10)
+            self.status_label.config(text="Caricamento file in corso...", foreground="blue")
+            self.root.update()
+
+            # Importa le funzioni da script.py
+            from script import load_excel_files, merge_duplicates, save_excel, remove_duplicate_columns
+
+            # 1. Carica tutti i file Excel
+            self.status_label.config(text=f"Caricamento di {len(self.input_files)} file...", foreground="blue")
+            self.root.update()
+            combined_df = load_excel_files(self.input_files)
+
+            # 2. Rimuovi colonne duplicate (case-insensitive)
+            self.status_label.config(text="Verifica colonne duplicate...", foreground="blue")
+            self.root.update()
+            combined_df = remove_duplicate_columns(combined_df)
+
+            # 3. Verifica che le colonne di aggregazione esistano
+            missing_cols = [col for col in aggregation_columns if col not in combined_df.columns]
+            if missing_cols:
+                self.progress.stop()
+                self.status_label.config(text="Errore: colonne non trovate", foreground="red")
+                messagebox.showerror(
+                    "Errore",
+                    f"Le seguenti colonne di aggregazione non esistono nei file:\n\n{', '.join(missing_cols)}\n\n"
+                    f"Colonne disponibili:\n{', '.join(combined_df.columns.tolist())}"
+                )
+                return
+
+            # 4. Effettua il merge delle tuple duplicate
+            self.status_label.config(text="Merge in corso...", foreground="blue")
+            self.root.update()
+            merged_df, errors = merge_duplicates(combined_df, aggregation_columns)
+
+            # 5. Salva il documento risultante
+            self.status_label.config(text="Salvataggio file...", foreground="blue")
+            self.root.update()
+            save_excel(merged_df, self.output_file)
+
+            self.progress.stop()
+            self.status_label.config(text="Merge completato con successo!", foreground="green")
+
+            # Mostra risultato
+            conflicts_msg = ""
+            if errors:
+                conflicts_msg = f"\n\nATTENZIONE: Trovati {len(errors)} conflitti durante il merge.\n"
+                conflicts_msg += "Consulta la console per i dettagli."
+
+                # Stampa gli errori nella console
+                print("\n" + "=" * 80)
+                print(f"CONFLITTI RILEVATI ({len(errors)}):")
+                print("=" * 80)
+                for i, error in enumerate(errors, 1):
+                    print(f"{i}. {error}")
+                print("=" * 80 + "\n")
+
+            msg = (f"Merge completato con successo!\n\n"
+                   f"File di input: {len(self.input_files)}\n"
+                   f"Righe prima del merge: {len(combined_df)}\n"
+                   f"Righe dopo il merge: {len(merged_df)}\n"
+                   f"Duplicati eliminati: {len(combined_df) - len(merged_df)}\n\n"
+                   f"File output:\n{self.output_file}"
+                   f"{conflicts_msg}")
+
+            messagebox.showinfo("Successo", msg)
+
+        except ValueError as ve:
+            self.progress.stop()
+            self.status_label.config(text="Errore di validazione", foreground="red")
+            messagebox.showerror("Errore", str(ve))
+        except Exception as e:
+            self.progress.stop()
+            self.status_label.config(text="Errore durante il merge", foreground="red")
+            messagebox.showerror("Errore", f"Si è verificato un errore:\n\n{str(e)}")
+
+    @property
+    def root(self):
+        """Ottiene il riferimento alla finestra root"""
+        return self.app_context.root

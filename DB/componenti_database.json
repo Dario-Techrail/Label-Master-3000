@@ -2,7 +2,7 @@
   {
     "nome": "Comp 1",
     "code_12nc": "1000",
-    "sn_iniziale": 3,
+    "sn_iniziale": 51,
     "prefisso_tipo_scheda": "A",
     "indicizzazione": true,
     "inizio_indicizzazione_prefisso": 1
@@ -10,21 +10,23 @@
   {
     "nome": "Comp 2",
     "code_12nc": "2000",
-    "sn_iniziale": 6,
+    "sn_iniziale": 150,
     "prefisso_tipo_scheda": "B",
     "indicizzazione": true,
     "inizio_indicizzazione_prefisso": [
       2,
-      3,
-      4
+      4,
+      6,
+      8,
+      10
     ]
   },
   {
     "nome": "Comp 3",
     "code_12nc": "3000",
-    "sn_iniziale": 4,
+    "sn_iniziale": 1010,
     "prefisso_tipo_scheda": "C",
     "indicizzazione": true,
-    "inizio_indicizzazione_prefisso": 5
+    "inizio_indicizzazione_prefisso": 55555
   }
 ]
