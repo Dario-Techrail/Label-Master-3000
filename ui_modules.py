@@ -3978,17 +3978,17 @@ class MergeDocTab:
             return
 
         try:
-            # Importa le funzioni per caricare i file
-            from script import load_excel_files, remove_duplicate_columns
+            # Importa ExcelMerger da business_logic
+            from business_logic import ExcelMerger
 
             # Carica i file per estrarre le colonne
             self.status_label.config(text="Caricamento colonne...", foreground="blue")
             self.root.update()
 
-            combined_df = load_excel_files(self.input_files)
+            combined_df = ExcelMerger.load_excel_files(self.input_files)
 
             # Rimuovi colonne duplicate (case-insensitive)
-            combined_df = remove_duplicate_columns(combined_df)
+            combined_df = ExcelMerger.remove_duplicate_columns(combined_df)
 
             columns = combined_df.columns.tolist()
 
@@ -4061,18 +4061,18 @@ class MergeDocTab:
             self.status_label.config(text="Caricamento file in corso...", foreground="blue")
             self.root.update()
 
-            # Importa le funzioni da script.py
-            from script import load_excel_files, merge_duplicates, save_excel, remove_duplicate_columns
+            # Importa ExcelMerger da business_logic
+            from business_logic import ExcelMerger
 
             # 1. Carica tutti i file Excel
             self.status_label.config(text=f"Caricamento di {len(self.input_files)} file...", foreground="blue")
             self.root.update()
-            combined_df = load_excel_files(self.input_files)
+            combined_df = ExcelMerger.load_excel_files(self.input_files)
 
             # 2. Rimuovi colonne duplicate (case-insensitive)
             self.status_label.config(text="Verifica colonne duplicate...", foreground="blue")
             self.root.update()
-            combined_df = remove_duplicate_columns(combined_df)
+            combined_df = ExcelMerger.remove_duplicate_columns(combined_df)
 
             # 3. Verifica che le colonne di aggregazione esistano
             missing_cols = [col for col in aggregation_columns if col not in combined_df.columns]
@@ -4089,12 +4089,12 @@ class MergeDocTab:
             # 4. Effettua il merge delle tuple duplicate
             self.status_label.config(text="Merge in corso...", foreground="blue")
             self.root.update()
-            merged_df, errors = merge_duplicates(combined_df, aggregation_columns)
+            merged_df, errors = ExcelMerger.merge_duplicates(combined_df, aggregation_columns)
 
             # 5. Salva il documento risultante
             self.status_label.config(text="Salvataggio file...", foreground="blue")
             self.root.update()
-            save_excel(merged_df, self.output_file)
+            ExcelMerger.save_excel(merged_df, self.output_file)
 
             self.progress.stop()
             self.status_label.config(text="Merge completato con successo!", foreground="green")
