@@ -1182,271 +1182,6 @@ class PDFLabelGenerator:
         return len(labels)
 
 
-# ============================================================================
-# GENERAZIONE Etichette Interne (PDF CON FORMATO WORD-LIKE)
-# ============================================================================
-
-# ============================================================================
-# MERGE EXCEL FILES
-# ============================================================================
-
-class ExcelMerger:
-    """Classe per gestire il merge di file Excel con eliminazione duplicati."""
-
-    @staticmethod
-    def load_excel_files(file_paths: List[str]) -> pd.DataFrame:
-        """
-        Carica n file Excel e li unisce in un unico DataFrame.
-        Normalizza tutti i nomi delle colonne in lowercase per evitare duplicati.
-
-        Args:
-            file_paths: Lista dei percorsi dei file Excel
-
-        Returns:
-            DataFrame contenente l'unione di tutti i file con colonne in lowercase
-        """
-        all_data = []
-        column_mappings = []  # Tiene traccia delle conversioni per il report
-
-        for file_path in file_paths:
-            if not os.path.exists(file_path):
-                print(f"ATTENZIONE: File non trovato: {file_path}")
-                continue
-
-            try:
-                df = pd.read_excel(file_path)
-
-                # Salva le colonne originali per il report
-                original_columns = df.columns.tolist()
-
-                # Normalizza i nomi delle colonne in lowercase
-                df.columns = df.columns.str.lower()
-
-                # Controlla se ci sono state conversioni
-                converted = [(orig, new) for orig, new in zip(original_columns, df.columns) if orig != new]
-                if converted:
-                    column_mappings.append((file_path, converted))
-
-                print(f"Caricato file: {file_path} - {len(df)} righe, {len(df.columns)} colonne")
-                all_data.append(df)
-            except Exception as e:
-                print(f"ERRORE nel caricamento di {file_path}: {str(e)}")
-
-        if not all_data:
-            raise ValueError("Nessun file è stato caricato con successo")
-
-        # Stampa report delle conversioni
-        if column_mappings:
-            print(f"\n{'='*80}")
-            print("NORMALIZZAZIONE COLONNE: Conversione in lowercase")
-            print(f"{'='*80}")
-            for file_path, conversions in column_mappings:
-                print(f"\nFile: {file_path}")
-                for orig, new in conversions:
-                    print(f"  '{orig}' -> '{new}'")
-            print(f"{'='*80}\n")
-
-        # Unione di tutti i DataFrame
-        combined_df = pd.concat(all_data, ignore_index=True)
-        print(f"\nDataFrame unito: {len(combined_df)} righe totali")
-        print(f"Colonne finali (lowercase): {combined_df.columns.tolist()}")
-
-        return combined_df
-
-    @staticmethod
-    def get_all_columns(df: pd.DataFrame) -> List[str]:
-        """
-        Restituisce la lista di tutte le colonne del DataFrame
-
-        Args:
-            df: DataFrame di input
-
-        Returns:
-            Lista dei nomi delle colonne
-        """
-        columns = df.columns.tolist()
-        print(f"\nColonne totali: {len(columns)}")
-        print(f"Colonne: {columns}")
-        return columns
-
-    @staticmethod
-    def remove_duplicate_columns(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Rimuove colonne duplicate dal DataFrame.
-        Mantiene solo la prima occorrenza di ogni colonna duplicata.
-
-        Nota: Questa funzione è un controllo di sicurezza, dato che load_excel_files
-        normalizza già le colonne in lowercase.
-
-        Args:
-            df: DataFrame di input
-
-        Returns:
-            DataFrame con colonne duplicate rimosse
-        """
-        # Controlla se ci sono colonne duplicate
-        if df.columns.duplicated().any():
-            print(f"\n{'='*80}")
-            print("ATTENZIONE: Trovate colonne duplicate (stesso nome esatto)")
-            print(f"{'='*80}")
-
-            # Trova le colonne duplicate
-            duplicates = df.columns[df.columns.duplicated()].unique().tolist()
-            for dup in duplicates:
-                count = (df.columns == dup).sum()
-                print(f"  - '{dup}' appare {count} volte (mantenuta solo la prima)")
-
-            # Rimuovi duplicati mantenendo la prima occorrenza
-            df_cleaned = df.loc[:, ~df.columns.duplicated()].copy()
-
-            print(f"\nColonne prima: {len(df.columns)}")
-            print(f"Colonne dopo rimozione duplicati: {len(df_cleaned.columns)}")
-            print(f"{'='*80}\n")
-
-            return df_cleaned
-        else:
-            # Nessun duplicato trovato
-            return df
-
-    @staticmethod
-    def merge_duplicates(df: pd.DataFrame, aggregation_columns: List[str]) -> tuple:
-        """
-        Effettua il merge delle tuple duplicate basandosi sulle colonne di aggregazione.
-        Rileva e segnala eventuali conflitti quando valori diversi (non vuoti) vengono trovati
-        per lo stesso gruppo di aggregazione.
-
-        Il confronto delle colonne di aggregazione è case-insensitive (maiuscole/minuscole ignorate).
-
-        Args:
-            df: DataFrame di input
-            aggregation_columns: Lista delle colonne da usare come chiave di aggregazione
-
-        Returns:
-            Tupla (DataFrame aggregato, lista degli errori)
-        """
-        errors = []
-
-        # Verifica che le colonne di aggregazione esistano
-        missing_cols = [col for col in aggregation_columns if col not in df.columns]
-        if missing_cols:
-            raise ValueError(f"Colonne di aggregazione non trovate nel DataFrame: {missing_cols}")
-
-        print(f"\nInizio merge con colonne di aggregazione: {aggregation_columns}")
-        print(f"Righe prima del merge: {len(df)}")
-
-        # Crea una copia del DataFrame per non modificare l'originale
-        df_work = df.copy()
-
-        # Crea colonne temporanee normalizzate (uppercase) per il raggruppamento case-insensitive
-        temp_agg_cols = []
-        for col in aggregation_columns:
-            temp_col = f"__temp_normalized_{col}__"
-            # Converti in stringa e poi in uppercase, gestendo NaN
-            df_work[temp_col] = df_work[col].astype(str).str.upper()
-            temp_agg_cols.append(temp_col)
-
-        # Trova gruppi duplicati usando le colonne normalizzate
-        grouped = df_work.groupby(temp_agg_cols, dropna=False)
-
-        merged_rows = []
-
-        for group_key, group_df in grouped:
-            if len(group_df) == 1:
-                # Nessun duplicato, aggiungi direttamente (rimuovendo le colonne temporanee)
-                row_dict = group_df.iloc[0].to_dict()
-                # Rimuovi le colonne temporanee
-                for temp_col in temp_agg_cols:
-                    row_dict.pop(temp_col, None)
-                merged_rows.append(row_dict)
-            else:
-                # Ci sono duplicati, effettua il merge
-                merged_row = {}
-
-                # Copia le colonne di aggregazione usando i valori ORIGINALI (non normalizzati)
-                # Prendi il primo valore non-NaN per ogni colonna di aggregazione
-                for col in aggregation_columns:
-                    values = group_df[col].dropna()
-                    if len(values) > 0:
-                        # Usa il primo valore originale trovato (mantiene case originale)
-                        merged_row[col] = values.iloc[0]
-                    else:
-                        # Se tutti sono NaN, usa NaN
-                        merged_row[col] = group_df[col].iloc[0]
-
-                # Processa le altre colonne (escludendo anche le colonne temporanee)
-                other_columns = [col for col in df.columns if col not in aggregation_columns]
-
-                for col in other_columns:
-                    values = group_df[col].dropna()  # Rimuovi valori NaN/vuoti
-                    values = values[values != '']  # Rimuovi stringhe vuote
-
-                    unique_values = values.unique()
-
-                    if len(unique_values) == 0:
-                        # Tutti i valori sono vuoti/NaN
-                        merged_row[col] = None
-                    elif len(unique_values) == 1:
-                        # Un solo valore univoco (o tutti uguali)
-                        merged_row[col] = unique_values[0]
-                    else:
-                        # CONFLITTO: valori diversi per lo stesso gruppo
-                        # Costruisci il dizionario della chiave usando i valori originali
-                        key_dict = {col: merged_row[col] for col in aggregation_columns}
-                        error_msg = (
-                            f"CONFLITTO - Chiave: {key_dict}, "
-                            f"Colonna: '{col}', "
-                            f"Valori diversi trovati: {list(unique_values)}"
-                        )
-                        errors.append(error_msg)
-
-                        # Strategia di risoluzione: prendi il primo valore non nullo
-                        merged_row[col] = unique_values[0]
-
-                merged_rows.append(merged_row)
-
-        # Crea il DataFrame risultante
-        result_df = pd.DataFrame(merged_rows)
-
-        print(f"Righe dopo il merge: {len(result_df)}")
-        print(f"Righe eliminate (duplicati): {len(df) - len(result_df)}")
-
-        return result_df, errors
-
-    @staticmethod
-    def print_errors(errors: List[str]):
-        """
-        Stampa gli errori di conflitto rilevati
-
-        Args:
-            errors: Lista dei messaggi di errore
-        """
-        if errors:
-            print(f"\n{'='*80}")
-            print(f"ATTENZIONE: Trovati {len(errors)} conflitti durante il merge:")
-            print(f"{'='*80}")
-            for i, error in enumerate(errors, 1):
-                print(f"{i}. {error}")
-            print(f"{'='*80}\n")
-        else:
-            print("\nNessun conflitto rilevato durante il merge.")
-
-    @staticmethod
-    def save_excel(df: pd.DataFrame, output_path: str):
-        """
-        Salva il DataFrame in un file Excel
-
-        Args:
-            df: DataFrame da salvare
-            output_path: Percorso del file di output
-        """
-        try:
-            df.to_excel(output_path, index=False, engine='openpyxl')
-            print(f"\nFile salvato con successo: {output_path}")
-            print(f"Righe: {len(df)}, Colonne: {len(df.columns)}")
-        except Exception as e:
-            print(f"ERRORE nel salvataggio del file: {str(e)}")
-            raise
-
 
 # ============================================================================
 # GENERAZIONE Etichette Interne (PDF CON FORMATO WORD-LIKE)
@@ -1588,3 +1323,70 @@ class WordLabelGenerator:
 
         c.save()
         return len(labels)
+
+
+# ============================================================================
+# Merge Sort documenti
+# ============================================================================
+
+
+
+
+class ExcelMerger:
+    def __init__(self, file_list: List[str]):
+        if not file_list:
+            raise ValueError("La lista dei file Excel è vuota.")
+        self.file_list = file_list
+        self.dataframes = []
+        self.columns = None
+
+    def _load_and_validate_files(self):
+        """
+        Carica i file Excel e verifica che abbiano tutti le stesse colonne.
+        """
+        for file_path in self.file_list:
+            df = pd.read_excel(file_path, dtype=str)  # tutto come testo
+
+            if self.columns is None:
+                self.columns = list(df.columns)
+            else:
+                if list(df.columns) != self.columns:
+                    raise ValueError(
+                        f"Formato non coerente nel file {file_path}.\n"
+                        f"Attese: {self.columns}\n"
+                        f"Trovate: {list(df.columns)}"
+                    )
+
+            self.dataframes.append(df)
+
+    def merge_and_sort(
+        self,
+        sort_by: str,
+        output_file: str,
+        ascending: bool = True
+    ):
+        """
+        Unisce i file, ordina per una colonna e salva il risultato.
+        """
+        self._load_and_validate_files()
+
+        if sort_by not in self.columns:
+            raise ValueError(f"La colonna '{sort_by}' non esiste.")
+
+        merged_df = pd.concat(self.dataframes, ignore_index=True)
+
+        # Forza di nuovo tutto a stringa (extra sicurezza)
+        merged_df = merged_df.astype(str)
+
+        # Sostituisci 'nan' con stringa vuota per avere celle vuote nell'Excel
+        merged_df = merged_df.replace('nan', '', regex=False)
+
+        merged_df = merged_df.sort_values(
+            by=sort_by,
+            ascending=ascending,
+            kind="mergesort"  # ordinamento stabile
+        )
+
+        merged_df.to_excel(output_file, index=False)
+
+        return merged_df
