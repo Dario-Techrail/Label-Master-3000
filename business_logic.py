@@ -780,6 +780,9 @@ class DataProcessor:
 
                 # Scrivi i dati nella riga di output
                 for col_idx, header_name in enumerate(output_headers, start=1):
+                    #if header_name == 'SN':
+                    #    row_data['SN'] = ''
+
                     cell_value = row_data.get(header_name, "")
                     cell = ws_output.cell(row=output_row, column=col_idx, value=cell_value)
                     DataProcessor._formatta_cella(cell)
@@ -955,6 +958,10 @@ class DataProcessor:
 
                 # Scrivi i dati nella riga di output
                 for col_idx, header_name in enumerate(output_headers, start=1):
+                    if header_name=='SN':
+                        row_data['SN']=''
+                    if header_name=='Fornitore':
+                        row_data['Fornitore']=''
                     cell_value = row_data.get(header_name, "")
                     cell = ws_output.cell(row=output_row, column=col_idx, value=cell_value)
                     DataProcessor._formatta_cella(cell)
@@ -1250,8 +1257,13 @@ class WordLabelGenerator:
             labels = labels * repetitions
 
         empty_count = (start_row - 1) * WordLabelGenerator.COLUMNS_PER_ROW + (start_column - 1)
+        
+        #SORT LABELS
+        labels = sorted(labels,key=lambda x: int(x.split("-")[0].split(" ")[1]))
+        
         #LABEL DIVISION: 
         black_labels = labels
+        
         if empty_count > 0:
             labels = [""] * empty_count + labels
 
@@ -1259,6 +1271,7 @@ class WordLabelGenerator:
         for i in range(0, len(labels), WordLabelGenerator.COLUMNS_PER_ROW):
             riga = labels[i:i + WordLabelGenerator.COLUMNS_PER_ROW]
             righe_dati.append(riga)
+        
         #black labels senza spazi
         righe_dati_black = []
         for i in range(0, len(black_labels), WordLabelGenerator.COLUMNS_PER_ROW):
