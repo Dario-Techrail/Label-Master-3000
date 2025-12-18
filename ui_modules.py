@@ -561,6 +561,7 @@ class InterfacciaGeneratoreExcel:
                 # Entry modificabile per Inizio Indicizzazione Prefisso
                 entry_indic = ttk.Entry(self.frame_lista_componenti, width=10)
                 indic_value = comp_data.get('inizio_indicizzazione_prefisso')
+                print(f"DEBUG AGGIORNA_LISTA: {nome_componente} - inizio_indic={indic_value}")
                 if indic_value is not None:
                     if isinstance(indic_value, list):
                         entry_indic.insert(0, ','.join(str(x) for x in indic_value))
@@ -679,6 +680,37 @@ class InterfacciaGeneratoreExcel:
             messagebox.showwarning("Attenzione", "Nessun componente selezionato da salvare")
             return
 
+        # IMPORTANTE: Leggi i valori attuali dai widget Entry di inizio indicizzazione
+        # prima di salvare il preset
+        print("DEBUG SALVA PRESET: Lettura valori dagli Entry widgets...")
+        for nome_componente, entry_widget in self.entry_indic_widgets.items():
+            if nome_componente in self.componenti_selezionati:
+                indic_text = entry_widget.get().strip()
+                print(f"  {nome_componente}: entry_text='{indic_text}'")
+
+                if indic_text == "":
+                    self.componenti_selezionati[nome_componente]['inizio_indicizzazione_prefisso'] = None
+                    print(f"    -> Salvato come None")
+                else:
+                    # supporta formato "1,3,5" oppure singolo numero "3"
+                    if ',' in indic_text:
+                        parts = [p.strip() for p in indic_text.split(',') if p.strip()]
+                        try:
+                            parsed = [int(p) for p in parts]
+                            self.componenti_selezionati[nome_componente]['inizio_indicizzazione_prefisso'] = parsed
+                            print(f"    -> Salvato come lista: {parsed}")
+                        except ValueError:
+                            print(f"    -> ERRORE parsing lista, mantenuto valore corrente")
+                            pass
+                    else:
+                        try:
+                            parsed = int(indic_text)
+                            self.componenti_selezionati[nome_componente]['inizio_indicizzazione_prefisso'] = parsed
+                            print(f"    -> Salvato come int: {parsed}")
+                        except ValueError:
+                            print(f"    -> ERRORE parsing int, mantenuto valore corrente")
+                            pass
+
         # Finestra per inserire il nome del preset
         finestra_salva = tk.Toplevel(self.root)
         finestra_salva.title("Salva Preset Componenti")
@@ -720,17 +752,28 @@ class InterfacciaGeneratoreExcel:
                     return
 
             try:
-                # Salva solo i nomi dei componenti, non le altre proprietà
-                nomi_componenti = list(self.componenti_selezionati.keys())
+                # Salva i componenti con quantità e inizio_indicizzazione_prefisso
+                componenti_da_salvare = []
+                print("DEBUG SALVA PRESET: Preparazione dati da salvare...")
+                for nome_comp, dati_comp in self.componenti_selezionati.items():
+                    comp_dict = {
+                        'nome': nome_comp,
+                        'quantita': dati_comp.get('quantita', 1),
+                        'inizio_indicizzazione_prefisso': dati_comp.get('inizio_indicizzazione_prefisso')
+                    }
+                    print(f"  {nome_comp}: quantita={comp_dict['quantita']}, inizio_indic={comp_dict['inizio_indicizzazione_prefisso']}")
+                    componenti_da_salvare.append(comp_dict)
 
                 preset_data = {
                     'nome': nome_preset,
                     'data_creazione': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    'componenti': nomi_componenti
+                    'componenti': componenti_da_salvare
                 }
 
                 with open(preset_file, 'w', encoding='utf-8') as f:
                     json.dump(preset_data, f, indent=2, ensure_ascii=False)
+
+                print(f"DEBUG SALVA PRESET: Preset salvato in {preset_file}")
 
                 messagebox.showinfo("Successo", f"Preset '{nome_preset}' salvato correttamente")
                 finestra_salva.destroy()
@@ -818,29 +861,50 @@ class InterfacciaGeneratoreExcel:
                     return
 
             try:
-                # Carica i nomi dei componenti dal preset
-                nomi_componenti = preset_data.get('componenti', [])
+                # Carica i componenti dal preset
+                componenti_preset = preset_data.get('componenti', [])
 
+                # Supporto per il vecchio formato (lista di nomi)
+                if componenti_preset and isinstance(componenti_preset[0], str):
+                    # Vecchio formato: lista di nomi
+                    componenti_preset = [{'nome': nome, 'quantita': 1, 'inizio_indicizzazione_prefisso': None}
+                                        for nome in componenti_preset]
                 # Se il preset è nel vecchio formato (dict), estrai le chiavi
-                if isinstance(nomi_componenti, dict):
-                    nomi_componenti = list(nomi_componenti.keys())
+                elif isinstance(componenti_preset, dict):
+                    componenti_preset = [{'nome': nome, 'quantita': 1, 'inizio_indicizzazione_prefisso': None}
+                                        for nome in componenti_preset.keys()]
 
                 # Svuota i componenti selezionati
                 self.componenti_selezionati.clear()
 
                 # Carica ogni componente dal database
                 componenti_non_trovati = []
-                for nome_comp in nomi_componenti:
+                for comp_preset in componenti_preset:
+                    # Gestisci sia il nuovo formato (dict) che il vecchio (string)
+                    if isinstance(comp_preset, dict):
+                        nome_comp = comp_preset.get('nome')
+                        quantita_preset = comp_preset.get('quantita', 1)
+                        inizio_indic_preset = comp_preset.get('inizio_indicizzazione_prefisso')
+                    else:
+                        nome_comp = comp_preset
+                        quantita_preset = 1
+                        inizio_indic_preset = None
+
                     comp_info = self.gestore_componenti.cerca_componente_per_nome(nome_comp)
                     if comp_info:
-                        # Popola con i dati aggiornati dal database
+                        # Popola con i dati dal preset, usando il database solo per sn_iniziale
                         self.componenti_selezionati[nome_comp] = {
-                            'quantita': 1,  # Quantità default
+                            'quantita': quantita_preset,
                             'sn_iniziale_override': comp_info.get('sn_iniziale'),
-                            'inizio_indicizzazione_prefisso': comp_info.get('inizio_indicizzazione_prefisso')
+                            'inizio_indicizzazione_prefisso': inizio_indic_preset
                         }
                     else:
                         componenti_non_trovati.append(nome_comp)
+
+                # DEBUG: Stampa i componenti caricati
+                print("DEBUG CARICA PRESET: Componenti caricati:")
+                for nome, dati in self.componenti_selezionati.items():
+                    print(f"  {nome}: quantita={dati.get('quantita')}, inizio_indic={dati.get('inizio_indicizzazione_prefisso')}")
 
                 # Aggiorna la visualizzazione
                 self._aggiorna_lista_componenti()
@@ -955,19 +1019,40 @@ class InterfacciaGeneratoreExcel:
             data = preset_data.get('data_creazione', 'N/A')
             componenti = preset_data.get('componenti', [])
 
-            # Se il preset è nel vecchio formato (dict), estrai le chiavi
+            # Normalizza i componenti per supportare tutti i formati
+            componenti_normalizzati = []
             if isinstance(componenti, dict):
-                componenti = list(componenti.keys())
+                # Vecchio formato dict
+                componenti_normalizzati = [{'nome': nome, 'quantita': None, 'inizio_indicizzazione_prefisso': None}
+                                           for nome in componenti.keys()]
+            elif componenti and isinstance(componenti[0], str):
+                # Vecchio formato lista di stringhe
+                componenti_normalizzati = [{'nome': nome, 'quantita': None, 'inizio_indicizzazione_prefisso': None}
+                                           for nome in componenti]
+            else:
+                # Nuovo formato: lista di dict
+                componenti_normalizzati = componenti
 
             dettagli = f"Nome: {nome}\n\n"
             dettagli += f"Data creazione: {data}\n\n"
-            dettagli += f"Numero componenti: {len(componenti)}\n\n"
+            dettagli += f"Numero componenti: {len(componenti_normalizzati)}\n\n"
             dettagli += "Componenti:\n"
 
-            for comp_nome in componenti:
-                dettagli += f"  - {comp_nome}\n"
+            for comp in componenti_normalizzati:
+                nome_comp = comp.get('nome') if isinstance(comp, dict) else comp
+                quantita = comp.get('quantita') if isinstance(comp, dict) else None
+                inizio_indic = comp.get('inizio_indicizzazione_prefisso') if isinstance(comp, dict) else None
 
-            dettagli += "\n(I dati dei componenti verranno caricati dal database)"
+                dettagli += f"  - {nome_comp}"
+                if quantita is not None:
+                    dettagli += f" (Quantità: {quantita}"
+                    if inizio_indic is not None:
+                        dettagli += f", Inizio Indic: {inizio_indic}"
+                    dettagli += ")"
+                dettagli += "\n"
+
+            if any(comp.get('quantita') is None for comp in componenti_normalizzati if isinstance(comp, dict)):
+                dettagli += "\n(Quantità e Inizio Indic. verranno caricati dal database per i preset vecchi)"
 
             text_dettagli.insert(1.0, dettagli)
             text_dettagli.config(state=tk.DISABLED)

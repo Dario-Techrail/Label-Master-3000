@@ -2,25 +2,37 @@
   {
     "nome": "Comp 1",
     "code_12nc": "1000",
-    "sn_iniziale": 72,
+    "sn_iniziale": 78,
     "prefisso_tipo_scheda": "A",
     "indicizzazione": true,
-    "inizio_indicizzazione_prefisso": null
+    "inizio_indicizzazione_prefisso": [
+      9,
+      9,
+      9
+    ]
   },
   {
     "nome": "Comp 2",
     "code_12nc": "2000",
-    "sn_iniziale": 171,
+    "sn_iniziale": 177,
     "prefisso_tipo_scheda": "B",
     "indicizzazione": true,
-    "inizio_indicizzazione_prefisso": null
+    "inizio_indicizzazione_prefisso": [
+      8,
+      8,
+      8
+    ]
   },
   {
     "nome": "Comp 3",
     "code_12nc": "3000",
-    "sn_iniziale": 1031,
+    "sn_iniziale": 1037,
     "prefisso_tipo_scheda": "C",
     "indicizzazione": true,
-    "inizio_indicizzazione_prefisso": null
+    "inizio_indicizzazione_prefisso": [
+      7,
+      8,
+      9
+    ]
   }
 ]
